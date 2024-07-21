@@ -241,6 +241,21 @@ Run a debug pod:
 kubectl run --generator=run-pod/v1 -it --rm load-generator --image=busybox /bin/sh
 ```
 
+To see the deployment name of which the pod is part of:
+
+```
+# list the pods for the given namespace
+kubectl get pods -n default
+
+# view the pod and output the metadata that shows the replicaset
+kubectl get pods/example-application-5dd6d8465b-dngfx -n default -o jsonpath='{.metadata.ownerReferences[*].name}'
+example-application-5dd6d8465b
+
+# view the replicaset and output the deployment name
+kubectl get replicaset/example-application-5dd6d8465b -n default -o jsonpath='{.metadata.ownerReferences[*].name}'
+example-application
+```
+
 ### Deployments
 
 List deployments	
@@ -470,7 +485,23 @@ Services:
 kubectl expose deployment nginx --port 80 --target-port 80 --dry-run=client -o yaml > service.yaml
 ```
 
+## API Resources
+
+To view all api resources, such as ingress, configmap, servicemonitor and any other CRDs:
+
+```bash
+kubectl api-resources
+```
+
+To view all the resources in a given namespace:
+
+```bash
+for obj in $(kubectl api-resources --verbs=list --namespaced -o name); do kubectl get $obj -n my-namespace --ignore-not-found --show-kind ; done
+```
+
 ## Troubleshooting
+
+### Pods
 
 Let's look at a pod:
 
@@ -528,6 +559,36 @@ rpi-03   276m         6%     330Mi           35%
 rpi-05   1107m        27%    2222Mi          57%
 rpi-06   298m         7%     467Mi           12%
 rpi-07   238m         5%     416Mi           10%
+```
+
+### Namespace not deleting
+
+If you see the status of your namespace is `Terminating`, it could be because of a resource is prevented from deletion, you can look under the namespace using:
+
+```bash
+for obj in $(kubectl api-resources --verbs=list --namespaced -o name); do kubectl get $obj -n my-namespace --ignore-not-found --show-kind ; done
+```
+
+### Ingress not deleting
+
+If your ingress don't want to delete you can remove the finalizers [source](https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/1629#issuecomment-731011683)
+
+```bash
+kubectl patch ingress my-ingress -n my-namespace -p '{"metadata":{"finalizers":[]}}' --type=merge
+```
+
+## Taints
+
+To configure a node to not accept any more workloads but keep the existing pods running, you can set a taint to the node:
+
+```bash
+kubectl taint nodes ip-10-20-8-134.eu-west-1.compute.internal scheduling=enabled:NoSchedule
+```
+
+To remove the taint:
+
+```bash
+kubectl taint nodes ip-10-20-8-134.eu-west-1.compute.internal scheduling=enabled:NoSchedule-
 ```
 
 ## Snippets

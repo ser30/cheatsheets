@@ -11,6 +11,7 @@ Helm helps you manage Kubernetes applications
 - [Repositories](#repositories)
 - [Search](#search)
 - [Show](#show)
+- [Charts](#charts)
 
 ## Installing Helm
 
@@ -198,4 +199,18 @@ helm create mychart
 # helm dependency build -> if you are in the chart directory with dependency in the Chart.yaml
 cd mychart
 helm cm-push . -f --username ${HELM_REPO_USERNAME} --password ${HELM_REPO_PASSWORD} https://chartmuseum.mydomain.com/ # chart name will be the directory name
+```
+
+## Helm Chart Resources
+
+- [Environment Variables in Charts](https://phoenixnap.com/kb/helm-environment-variables)
+
+## Charts
+
+### Access Values
+
+Access `--set env=dev` in a chart:
+
+```
+{{ .Values.env | quote }}
 ```

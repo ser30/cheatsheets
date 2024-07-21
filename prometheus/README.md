@@ -9,10 +9,17 @@
 
 ## Basics
 
-- Counter: A counter metric always increases
-- Gauge: A gauge metric can increase or decrease
-- Histogram: A histogram metric can increase or descrease
+- `Counter`: A counter metric always increases
+- `Gauge`: A gauge metric can increase or decrease
+- `Histogram`: A histogram metric can increase or descrease
 - [Source and Statistics 101](https://opensource.com/article/18/4/metrics-monitoring-and-python)
+
+Query Functions:
+
+- `rate` - The rate function calculates at what rate the counter increases per second over a given time window. [src](https://levelup.gitconnected.com/prometheus-counter-metrics-d6c393d86076)
+- `irate` - Calculates at what rate the counter increases per second over a defined time window. The difference being that irate only looks at the last two data points. This makes irate well suited for graphing volatile and/or fast-moving counters. [src](https://levelup.gitconnected.com/prometheus-counter-metrics-d6c393d86076)
+- `increase` - The increase function calculates the counter increase over a given time frame. [src](https://levelup.gitconnected.com/prometheus-counter-metrics-d6c393d86076)
+- `resets` - The function gives you the number of counter resets over a given time window. [src](https://levelup.gitconnected.com/prometheus-counter-metrics-d6c393d86076)
 
 ## Curated Examples
 
@@ -20,7 +27,33 @@ Example queries per exporter / service:
 
 - [Node Metrics](metric_examples/NODE_METRICS.md)
 
+## Questions and Answers
+
+How can I get the amount of requests over a given time (dashboard time):
+
+```
+sum by (uri) (increase(http_requests_total[$__range]))
+```
+
+How many pod restarts per minute?
+
+```
+rate(kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="default"}[15m]) * 60 * 15
+```
+
+View the pod restarts over time:
+
+```bash
+sum(kube_pod_container_status_restarts_total{container="my-service"}) by (pod)
+```
+
 ## Example Queries
+
+Show me all the metric names for the job=app:
+
+```
+group ({job="app"}) by (__name__)
+```
 
 How many nodes are up?
 
@@ -275,6 +308,20 @@ Subtract two gauge metrics (exclude the label that dont match):
 polkadot_block_height{instance="polkadot", chain=~"$chain", status="sync_target"} - ignoring(status) polkadot_block_height{instance="polkadot", chain=~"$chain", status="finalized"}
 ```
 
+Conditional joins when labels exisits:
+
+```
+(
+    # source: https://stackoverflow.com/a/72218915
+    # For all sensors that have a name (label "label"), join them with `node_hwmon_sensor_label` to get that name.
+    (node_hwmon_temp_celsius * ignoring(label) group_left(label) node_hwmon_sensor_label)
+  or
+    # For all sensors that do NOT a name (label "label") in `node_hwmon_sensor_label`, assign them `label="unknown-sensor-name"`.
+    # `label_replace()` only adds the new label, it does not remove the old one.
+    (label_replace((node_hwmon_temp_celsius unless ignoring(label) node_hwmon_sensor_label), "label", "unknown-sensor-name", "", ".*"))
+)
+```
+
 Container CPU Average for 5m:
 
 ```
@@ -353,17 +400,47 @@ Remove / Replace:
 
 - https://medium.com/@texasdave2/replace-and-remove-a-label-in-a-prometheus-query-9500faa302f0
 
-Client Request Counts:
+**Client Request Counts**:
 
 ```
 irate(http_client_requests_seconds_count{job="web-metrics", environment="dev", uri!~".*actuator.*"}[5m])
 ```
 
-Client Response Time:
+**Client Response Time**:
 
 ```
 irate(http_client_requests_seconds_sum{job="web-metrics", environment="dev", uri!~".*actuator.*"}[5m]) / 
 irate(http_client_requests_seconds_count{job="web-metrics", environment="dev", uri!~".*actuator.*"}[5m])
+```
+
+**Requests per Second**:
+
+```
+sum(increase(http_server_requests_seconds_count{service="my-service", env="dev"}[1m])) by (uri)
+```
+
+is the same as:
+
+```
+sum(rate(http_server_requests_seconds_count{service="my-service", env="dev"}[1m]) * 60 ) by (uri)
+```
+
+See this [SO thread](https://stackoverflow.com/questions/66282512/grafana-graphing-http-requests-per-minute-with-http-server-requests-seconds-coun) for more details
+
+**p95 Request Latencies** with `histogram_quantile` (the latency experienced by the slowest 5% of requests in seconds):
+
+```promql
+histogram_quantile(0.95, sum by (le, store) (rate(myapp_latency_seconds_bucket{application="product-service", category=~".+"}[5m])))
+```
+
+Resource Requests and Limits:
+
+```
+# for cpu: average rate of cpu usage over 15minutes
+rate(container_cpu_usage_seconds_total{job="kubelet",container="my-application"}[15m])
+
+# for mem: shows in mb
+container_memory_usage_bytes{job="kubelet",container="my-application"}  / (1024 * 1024)
 ```
 
 ## Scrape Config
@@ -575,7 +652,8 @@ Dashboarding:
 - [@devconnected Disk IO Dashboarding](https://devconnected.com/monitoring-disk-i-o-on-linux-with-the-node-exporter/)
 - [@deploy.live recording rules](https://deploy.live/blog/today-i-learned-prometheus-recording-rules/)
 - [CPU and Memory Requests](https://gist.github.com/max-rocket-internet/6a05ee757b6587668a1de8a5c177728b)
-- 
+- [Prometheus Counter Metrics](https://levelup.gitconnected.com/prometheus-counter-metrics-d6c393d86076)
+
 Setups:
 
 - [Simulating AWS Tags in Local Prometheus](https://ops.tips/blog/simulating-aws-tags-in-local-prometheus/)

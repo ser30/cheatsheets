@@ -17,6 +17,14 @@ $ cat ~/.gitconfig
 	email = <user>@<domain>
 ```
 
+Configuration per repository:
+
+```bash
+git config user.name "Ruan"
+git config user.email "me@example.com"
+git config commit.gpgsign true
+```
+
 ## Fetch Remote Branches
 
 Fetch all remote branches:
@@ -80,6 +88,83 @@ Delete a local branch:
 ```bash
 $ git branch -D branch-name 
 ```
+
+## Cherry Picks
+
+Given the scenario that you are creating a new branch `feature/change-website-color` from the `main` branch, but you want to include a recent commit to the branch `feature/fixed-css` to include into your branch. You can use cherry picking.
+
+Create your branch:
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b "feature/change-website-color`
+# you done some changes
+git commit -m "Changed website color to blue"
+```
+
+Now to include the css change:
+
+```bash
+git checkout main
+git fetch --all
+git checkout feature/fixed-css
+git log
+# copy the commit id
+# change to your branch
+git checkout feature/change-website-color
+git cherry-pick -e <commit-id-that-you-copied>
+```
+
+Commit and push to your branch:
+
+```bash
+git commit -m "cherry picked css fix"
+git push origin feature/change-website-color
+```
+
+## Tags
+
+Create a tag from main, checkout main and sync:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+Create a tag called `snapshot-20230525`:
+
+```bash
+git tag snapshot-20230525
+```
+
+Push up the tag:
+
+```bash
+git push origin snapshot-20230525
+```
+
+List all tags with a prefix:
+
+```bash
+git tag --sort=-version:refname | grep "release-*"
+```
+
+List the previous release (current being 0.55.0):
+
+```bash
+git tag --sort=-version:refname | grep "release-*" | sed -n '2p'
+# release-0.54.0
+```
+
+## Unstage changes
+
+If you have accidentally commited changes, you can unstage them:
+
+```bash
+git restore --staged modules/asg/variables.tf
+```
+
 
 ## External Cheatsheets
 

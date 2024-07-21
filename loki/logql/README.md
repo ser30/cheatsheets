@@ -26,6 +26,12 @@ Search for logs that has the exact match "This is a test":
 {job="dev/logs"} |= "This is a test"
 ```
 
+Similar, but search with case insensitive:
+
+```
+{job="dev/logs"} |= "(?i)this is a test"
+```
+
 Similar as above, but dont include exact match "testerId=123":
 
 ```
@@ -130,6 +136,14 @@ And another one:
 {job="prod/logs"} | regexp `\[(?P<timestamps>(.*))\] (?P<environment>(prod|dev)).(?P<loglevel>(INFO|DEBUG|ERROR|WARN)): (?P<jsonstring>(.*))`
 ```
 
+Extracting `json` and mixing with `line_format` and `regexp`:
+
+```
+# message: EventID:12345678-1234-1234-1234-123456789abv - Some troubleshooting needed - runbookId:123456, categoryCode:DB, cpuValue:92.000000000000000000, serverName:Server01, versionId:1
+
+{job="serverlogs"} |= "logTag:event" | json | line_format "{{.message}}" | regexp "EventID:(?P<event_id>[a-f0-9\\-]+) - Some troubleshooting needed - runbookId:(?P<runbook_id>\\d+), categoryCode:(?P<category_code>\\w+), cpuValue:(?P<cpu_value>[\\d\\.]+), serverName:(?P<server_name>[^,]+), versionId:(?P<version_id>\\d+)"
+```
+
 - https://grafana.com/docs/loki/latest/logql/log_queries/
 - https://grafana.com/docs/loki/latest/logql/#label-filter-expression
 - https://gist.github.com/ruanbekker/cb4ebdc24331661ca120f20b4445ad75
@@ -172,4 +186,44 @@ Sum by:
 sum by (res_statusCode) (rate({job="containerlogs"} | json | line_format "timestamp={{ .time }} source_ip={{ .req_headers_x_real_ip }} method={{ .req_method }} path={{ .req_url }} status_code={{ .res_statusCode }}"[60s])) 
 ```
 
+Access nested json:
+
+```
+{namespace=~"$namespace", app=~"$app", pod=~"$pod"} | json  | line_format "{{.log}}" | json raw_body="message" | line_format "m: {{.raw_body}}" | __error__!="JSONParserErr"
+```
+
+Filter out JSONParserErr:
+
+```
+{container="my-service"} |= `` | json | __error__!="JSONParserErr" | line_format "{{.message}} {{.stacktrace}}"
+```
+
+Access nested json and return k/v pairs:
+
+```
+{container="my-service"} 
+| pattern `<_entry>` 
+| json
+| line_format "{{ .message }}\n{{ range $k, $v := (fromJson ._entry)}}{{if ne $k \"message\"}}{{$k}}: {{$v}} {{ end }}{{ end }}"
+```
+
 - https://grafana.com/docs/loki/latest/logql/log_queries/
+- https://stackoverflow.com/questions/69761162/loki-display-log-message-and-extra-fields-separately/70000941#70000941
+
+## Line Format
+
+Include the stacktrace if the key is present
+
+```
+{container="my-service"} |= `` | json | line_format `{{.message}} {{if .stacktrace }} {{- .stacktrace -}} {{else}} {{- "-" -}} {{end}}`
+```
+
+- https://stackoverflow.com/a/69976898
+
+## Metric Queries
+
+Count log events over the given grafana timefilter and sum by pod:
+
+```
+sum by (app)(count_over_time({app=~"my-service"} | json | line_format "{{.log}}" |~ "Unable to acquire"[$__interval]))
+```

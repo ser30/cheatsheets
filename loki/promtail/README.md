@@ -10,6 +10,7 @@
 - https://www.youtube.com/watch?v=bIAC0uQee0k (using promtail with loki)
 - https://grafana.com/docs/loki/latest/clients/promtail/scraping/
 - https://grafana.com/blog/2020/07/13/loki-tutorial-how-to-set-up-promtail-on-aws-ec2-to-find-and-analyze-your-logs/
+- https://gist.github.com/cspinetta/41db2cc7f03a5af49e1b1cfe68d1fea4 (promtail pipeline templating)
 
 ## Current Issues
 
@@ -171,3 +172,36 @@ scrape_configs:
     target_label: __path__
     replacement: /var/lib/docker/containers/$1*/*.log
 ```
+
+### JSON Nested Pipeline
+
+We want to extract the `info` key from the log line:
+
+```
+{"log": {\"level\": \"info\", \"timestamp\":\"2023-02-26 21:55:24.702\"}}
+```
+
+The config:
+
+```
+    pipelineStages:
+      - cri: {}
+      - multiline:
+          firstline: ^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},\d{3}
+          max_wait_time: 3s
+      - json:
+          expressions:
+            log:
+      - json:
+          expressions:
+            level:
+          source: log
+      - labels:
+          level:
+```
+
+Referenced from:
+- https://grafana.com/docs/loki/latest/clients/promtail/stages/json/#using-extracted-data
+
+Remap json values and set the output source:
+- https://stackoverflow.com/a/62228397

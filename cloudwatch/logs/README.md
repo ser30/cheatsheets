@@ -33,3 +33,40 @@ Only show logs containing `/status`:
 fields @message | filter @message like '/status'
 ```
 
+View eks audit logs for delete verbs:
+
+```
+fields @timestamp, @message, @logStream, @log
+| filter objectRef.namespace = 'dev' and objectRef.resource like /service.*/ and verb = 'delete'
+| sort @timestamp desc
+| limit 20
+```
+
+Select the logstream and filter on a string content:
+
+```
+fields @timestamp, @message, @logStream
+| sort @timestamp desc 
+| filter @logStream = 'cb2a300000000000000000003b3' 
+| filter @message like 'msg='
+```
+
+Select the logstream and filter out string content:
+
+```
+fields @timestamp, @message, @logStream | sort @timestamp desc 
+| filter @logStream = 'cb2a300000000000000000003b3' 
+| filter @message not like "Something I dont want to see"
+```
+
+Filter out multiple strings:
+
+```
+fields @timestamp, @message, @logStream | sort @timestamp desc 
+| filter @logStream = 'cb2a300000000000000000003b3'  
+  and not (
+    @message like "Something I dont want to see" or
+    @message like "also dont want to see this" or
+    @message like "or even this"
+  )
+```

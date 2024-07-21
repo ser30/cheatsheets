@@ -38,6 +38,73 @@ Terraform Apply to create/delete resources:
 terraform apply
 ```
 
+### Merge function
+
+In this scenario, you can have default tags, but if you want to replace `Environment`, you can define the `var.environment` and include it in the merge function.
+
+```terraform
+variable "default_tags" {
+  default = {
+    ManagedBy   = "terraform"
+    Environment = "local"
+  }
+}
+
+variable "name" {
+  default = "testing"
+}
+
+variable "environment" {
+  default = "dev"
+}
+
+output "merge_tags" {
+  value = "${merge(var.default_tags, tomap({"Name" = "prefix-${var.name}", "Environment" = "${var.environment}"}))}"
+}
+```
+
+### Validations
+
+Length:
+
+```terraform
+variable "service_name" {
+  type = string
+
+  validation {
+    condition     = length(var.service_name) < 40
+    error_message = "The service_name value cant be more than 40 characters."
+  }
+}
+```
+
+Regex match:
+
+```terraform
+variable "env_name" {
+  type = string
+  default = null
+  validation {
+    condition  = can(regex("^(dev|staging|production|ephemeral-.*)+$", var.env_name))
+    error_message = "For the env_name value only dev, staging, production and ephemeral-* are allowed."
+  }
+}
+```
+
+### Booleans to control
+
+We want to use a boolean variable to set the number:
+- true = 1
+- false = 0
+
+```terraform
+warm_pool = {
+  pool_state                  = "Running"
+  min_size                    = var.warm_pool_enabled ? 1 : 0
+  max_group_prepared_capacity = var.warm_pool_enabled ? 1 : 0
+}
+```
+
 ## Resources
 
 Terraform Tutorials:
@@ -65,12 +132,14 @@ Terraform Examples:
 Learn Guides:
 
 - [Hashicorp Terraform Modules](https://learn.hashicorp.com/collections/terraform/modules)
+- [Terraform Study Guide](https://github.com/ari-hacks/terraform-study-guide/)
 
 Terraform Cheatsheets
 - [acloudguru cheatsheet](https://acloudguru.com/blog/engineering/the-ultimate-terraform-cheatsheet)
 
 Terraform AWS Workshops:
 - [Terraform EKS AWS Workshop](https://tf-eks-workshop.workshop.aws/000_workshop_introduction.html)
+- [Terraform Guru](https://terraformguru.com/terraform-certification-using-azure-cloud/01-Infrastructure-as-Code-IaC-Basics/)
 
 Terraform with Ansible Examples:
 

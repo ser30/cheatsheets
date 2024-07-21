@@ -2,9 +2,11 @@
 
 * [Changing Tables](#changing-tables)
 * [Check and Repair Tables](#check-and-repair-tables)
+* [Rename Users](#rename-users)
 * [Create Tables](#create-tables)
 * [Delete](#delete)
 * [Get Size in MB](#get-size-in-mb)
+* [View Logged in Users](#view-logged-in-users)
 * [Indexes](#indexes)
 * [Insert Data](#insert-data)
 * [Performance Schema Metrics](#performance-schema-metrics)
@@ -31,6 +33,12 @@ Grant User all Permissions to Database:
 mysql> GRANT ALL PRIVILEGES ON my_db.* TO 'user1'@'%';
 ```
 
+Grant User all Permissions to all databases with grant option:
+
+```
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'user1'@'%' WITH GRANT OPTION;
+```
+
 Grant User all Permissions to Database in AWS RDS:
 
 ```
@@ -45,12 +53,20 @@ mysql> UPDATE mysql.user SET authentication_string = PASSWORD('foobar') WHERE Us
 mysql> SET PASSWORD FOR 'demo'@'%' = PASSWORD('foobar');
 # or
 mysql> ALTER USER 'demo'@'%' IDENTIFIED BY 'foobar';
+# or
+mysql> ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
 ```
 
 Flush:
 
 ```
 mysql> FLUSH PRIVILEGES;
+```
+
+## Rename Users
+
+```sql
+RENAME USER 'john12' TO 'john.permanent';
 ```
 
 ## Create Tables
@@ -75,7 +91,7 @@ mysql> CREATE TABLE domains (
   domain varchar(50) NOT NULL, 
   owner  varchar(50),
   year_registered int(4),
-  PRIMARY KEY (domain) 
+  PRIMARY KEY (id) 
 );
 ```
 
@@ -248,6 +264,23 @@ sum( data_free )/ 1024 / 1024 "Free Space in MB"
 FROM information_schema.TABLES 
 GROUP BY table_schema ;
 ```
+
+## View Logged in Users
+
+```sql
+SELECT SUBSTRING_INDEX(host, ':', 1) AS host_short, 
+  GROUP_CONCAT(DISTINCT user) AS users, 
+  COUNT(*) AS threads 
+  FROM information_schema.processlist 
+  GROUP BY host_short 
+  ORDER BY COUNT(*), host_short;
+```
+
+Or:
+
+```sql
+SELECT `USER`, COUNT(*) FROM information_schema.processlist GROUP BY `USER`;
+````
 
 ## Indexes
 
